@@ -20,8 +20,8 @@ import { ShieldCheck, Mail, Info, Sparkles, Scale, BookOpen } from 'lucide-react
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // No auth required - auto-authenticated
-  const [showLanding, setShowLanding] = useState(false); // Skip landing page
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start unauthenticated to show landing page
+  const [showLanding, setShowLanding] = useState(true); // Show landing page first
   const [userEmail, setUserEmail] = useState('user@bnsai.com'); // Default user
   const [activeTab, setActiveTab] = useState<ActiveTab>('workspace');
   const [isAdmin, setIsAdmin] = useState(false); // Regular user by default
@@ -62,7 +62,8 @@ export default function App() {
 
   const handleLogin = (email: string) => {
     setUserEmail(email);
-    setIsAuthenticated(true);
+    setIsAuthenticated(true); // Auto-authenticate without password
+    setShowLanding(false); // Hide landing page
     setActiveTab('workspace');
   };
 
@@ -152,8 +153,14 @@ export default function App() {
       </header>
 
       {/* Main Layout Area */}
-      <main className={`flex-1 w-full flex flex-col md:flex-row gap-6 p-4 md:p-6 relative z-10`}>
-        {isAuthenticated && (
+      <main className={`flex-1 w-full flex flex-col ${isAuthenticated ? 'md:flex-row gap-6 p-4 md:p-6' : 'p-2 sm:p-4 md:p-6'} relative z-10`}>
+        {!isAuthenticated ? (
+          showLanding ? (
+            <LandingView onEnterPortal={() => setShowLanding(false)} />
+          ) : (
+            <AuthView onLogin={handleLogin} onBackToLanding={() => setShowLanding(true)} />
+          )
+        ) : (
           <>
             {/* Sidebar component */}
             <Sidebar

@@ -34,31 +34,31 @@ export default function AuthView({ onLogin, onBackToLanding }: AuthViewProps) {
     setSuccessMessage('');
 
     if (activeTab === 'login') {
-      if (!email || !password) {
-        setErrorMessage('Please fill in all credentials.');
+      if (!email) {
+        setErrorMessage('Please enter your email address.');
         return;
       }
+      // Auto-login without password verification
       onLogin(email);
     } else if (activeTab === 'register') {
-      if (!name || !email || !password) {
-        setErrorMessage('All registration fields are required.');
+      if (!name || !email) {
+        setErrorMessage('Name and email are required.');
         return;
       }
-      setSuccessMessage('Account successfully created! You can now log in.');
+      // Auto-register and login
+      setSuccessMessage('Account created! Logging you in...');
       setTimeout(() => {
-        setActiveTab('login');
-        setSuccessMessage('');
-      }, 1500);
+        onLogin(email);
+      }, 1000);
     } else if (activeTab === 'forgot') {
       if (!email) {
         setErrorMessage('Please provide your email address.');
         return;
       }
-      setSuccessMessage('Recovery instruction stream dispatched to your email.');
+      setSuccessMessage('Logging you in with this email...');
       setTimeout(() => {
-        setActiveTab('login');
-        setSuccessMessage('');
-      }, 3000);
+        onLogin(email);
+      }, 1500);
     }
   };
 
