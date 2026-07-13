@@ -450,7 +450,17 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
                     <Download size={13} />
                   </button>
                   <button
-                    onClick={() => handleSend(chatHistory[index - 1]?.text || msg.text)}
+                    onClick={() => {
+                      // Find the user message that prompted this assistant response
+                      let userMessageText = msg.text;
+                      for (let i = index - 1; i >= 0; i--) {
+                        if (chatHistory[i].sender === 'user') {
+                          userMessageText = chatHistory[i].text;
+                          break;
+                        }
+                      }
+                      handleSend(userMessageText);
+                    }}
                     className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                     title="Regenerate"
                   >
