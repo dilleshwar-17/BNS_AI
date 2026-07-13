@@ -121,12 +121,12 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
     
     // Simulate user speaking after 4 seconds
     setTimeout(() => {
-      setSimulatedTranscript('What are the critical admissibility rules for WhatsApp chats as evidence?');
+      setSimulatedTranscript('What is Section 69 of BNS regarding false promises of marriage?');
       setOrbState('processing');
 
       setTimeout(async () => {
         setOrbState('speaking');
-        setSimulatedTranscript('BSA Section 61 & 63: Electronic records carry primary status, requiring digital certificate validation.');
+        setSimulatedTranscript('BNS Section 69 penalizes sexual intercourse on a false promise of marriage, carrying up to ten years imprisonment.');
         
         // Finalize voice session after speech finishes
         setTimeout(() => {
@@ -135,7 +135,7 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
             setIsVoiceMode(false);
             setOrbState('idle');
             // Inject the resulting query into main chat view
-            handleSend("What are the admissibility rules for WhatsApp electronic evidence?");
+            handleSend("Explain Bharatiya Nyaya Sanhita Section 69");
           }, 1500);
         }, 5000);
       }, 2000);
@@ -518,10 +518,10 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
             <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
           </button>
           <button
-            onClick={() => handleSend("What are the criteria for admissibility of digital logs under BSA 2023?")}
+            onClick={() => handleSend("What is BNS Section 318 regarding cheating?")}
             className="p-4 rounded-xl border border-white/5 bg-slate-950/40 hover:bg-white/5 hover:border-white/10 text-left text-xs font-sans font-medium text-slate-300 hover:text-white transition-all flex items-center justify-between group shadow-xl cursor-pointer"
           >
-            <span>Read **BSA Sec 63** electronic evidence</span>
+            <span>Explain **BNS Sec 318** cheating definition</span>
             <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>

@@ -162,7 +162,7 @@ export default function LandingView({ onEnterPortal }: LandingViewProps) {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="font-sans text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none"
           >
-            The Intelligent Operating System for <span className="bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">Indian Legal Research</span>
+            The Advanced Research & Reasoning Platform for <span className="bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">Indian Legal Research</span>
           </motion.h1>
 
           <motion.p 

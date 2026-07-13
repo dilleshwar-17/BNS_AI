@@ -4,6 +4,7 @@
  */
 
 import { ChatMessage, DeepResearchSession, CompareResult, DraftDocument, LegalCitation, CaseLaw, ResearchPlanStep, EvidenceTimelineEvent } from '../types';
+import { getChromaBNSCollection } from './bnsVectorDB';
 
 // Standard lag utility to simulate real network requests
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -229,164 +230,122 @@ export const APIService = {
     await delay(1800); // simulate real deep processing lag
     const textLower = question.toLowerCase();
 
-    let responseText = `I have analyzed your query regarding Indian Law. Under the recently enacted legal codes—the Bharatiya Nyaya Sanhita (BNS), Bharatiya Nagarik Suraksha Sanhita (BNSS), and Bharatiya Sakshya Adhiniyam (BSA)—this query touches on key procedural and substantive frameworks.`;
+    let responseText = '';
     let citations: LegalCitation[] = [];
     let cases: CaseLaw[] = [];
     let confidence = 94;
 
-    if (textLower.includes('murder') || textLower.includes('lynch') || textLower.includes('killing') || textLower.includes('103')) {
-      responseText = `Under the Bharatiya Nyaya Sanhita (BNS), 2023, the law regarding **murder** has been consolidated under **Section 103** (replacing the old Section 302 of the IPC). 
+    try {
+      const collection = await getChromaBNSCollection();
+      const results = await collection.query({
+        queryTexts: [question],
+        nResults: 2
+      });
 
-Notably, **Section 103(2)** introduces a landmark amendment specifically penalizing **mob lynching**:
-* **Definition**: When a group of five or more persons acts in concert to commit murder on grounds of race, caste, community, sex, place of birth, language, personal belief, or any other similar ground.
-* **Punishment**: Each member of such a group is punishable with the **death penalty** or **imprisonment for life**, and shall also be liable to a substantial fine.
-* **Legal Precedent**: This provision directly incorporates the directives issued by the Supreme Court in *Tehseen S. Poonawalla v. Union of India (2018)*.`;
-      
-      citations = [
-        {
+      const matchedIds = results.ids[0] || [];
+      const matchedDocs = results.documents[0] || [];
+      const matchedMetas = results.metadatas[0] || [];
+      const distances = results.distances[0] || [];
+
+      // If we have a very good match (similarity score > 0.12, meaning distance < 0.88)
+      if (matchedDocs.length > 0 && distances[0] < 0.88) {
+        const topMeta = matchedMetas[0];
+        const topDoc = matchedDocs[0];
+        
+        responseText = `### 🔍 BNS Sanhita Retrieval Result (ChromaDB Collection: 'bns_sanhita')
+
+I have performed a semantic vector search on our ChromaDB collection using the query terms. The top retrieved substantive match indicates:
+
+**${topMeta.chapter || 'SUBSTANTIVE CODES'} • Section ${topMeta.section}: ${topMeta.title}**
+
+${topDoc.replace(/Section \d+(\(\d+\))?: [^.]+\([^)]+\)\./i, '').trim()}
+
+`;
+
+        // If second match is also good, append as related provision
+        if (matchedDocs.length > 1 && distances[1] < 0.88) {
+          const secondMeta = matchedMetas[1];
+          const secondDoc = matchedDocs[1];
+          responseText += `\n---\n\n### Related Substantive Provision:\n**Section ${secondMeta.section}: ${secondMeta.title} (${secondMeta.chapter})**\n${secondDoc.replace(/Section \d+(\(\d+\))?: [^.]+\([^)]+\)\./i, '').trim()}`;
+        }
+
+        // Build active citations
+        citations = matchedMetas.map(meta => ({
           act: 'Bharatiya Nyaya Sanhita (BNS), 2023',
-          section: 'Section 103(1)',
-          title: 'Punishment for Murder',
-          relevance: 'Standard charge for murder replacing IPC 302.',
-          type: 'BNS'
-        },
-        {
-          act: 'Bharatiya Nyaya Sanhita (BNS), 2023',
-          section: 'Section 103(2)',
-          title: 'Murder by Group (Mob Lynching)',
-          relevance: 'Introduces life imprisonment or death penalty for hate-motivated group murder.',
-          type: 'BNS'
-        }
-      ];
+          section: `Section ${meta.section}`,
+          title: meta.title,
+          relevance: `Direct substantive match retrieved from ChromaDB.`,
+          type: 'BNS' as const
+        }));
 
-      cases = [
-        {
-          title: 'Tehseen S. Poonawalla v. Union of India',
-          citation: '(2018) 9 SCC 501',
-          year: 2018,
-          court: 'Supreme Court of India',
-          summary: 'The apex court issued comprehensive guidelines to prevent, deter, and penalize mob violence and lynching, which led directly to the codification of BNS Section 103(2).'
+        // Map relevant cases depending on the topic
+        if (textLower.includes('murder') || textLower.includes('lynch') || textLower.includes('103')) {
+          cases.push({
+            title: 'Tehseen S. Poonawalla v. Union of India',
+            citation: '(2018) 9 SCC 501',
+            year: 2018,
+            court: 'Supreme Court of India',
+            summary: 'The apex court issued comprehensive guidelines to prevent, deter, and penalize mob violence and lynching, directly codifying BNS Section 103(2).'
+          });
+        } else if (textLower.includes('cheating') || textLower.includes('fraud') || textLower.includes('318')) {
+          cases.push({
+            title: 'Sushil Sethi v. State of Arunachal Pradesh',
+            citation: '(2020) 3 SCC 240',
+            year: 2020,
+            court: 'Supreme Court of India',
+            summary: 'Distinguished between simple breach of contract and criminal cheating, demanding proof of dishonest intent at inception.'
+          });
         }
-      ];
-      confidence = 98;
-    } else if (textLower.includes('electronic') || textLower.includes('digital') || textLower.includes('65b') || textLower.includes('whatsapp') || textLower.includes('evidence')) {
-      responseText = `The admissibility of **electronic and digital evidence** has been highly modernized under the **Bharatiya Sakshya Adhiniyam (BSA), 2023**, which repeals and replaces the Indian Evidence Act (IEA), 1872.
 
-Under **Section 61** of the BSA, electronic records are given equal status to paper documents. 
-**Section 63** replaces the controversial Section 65B of the old IEA, detailing the conditions for admissibility:
-* **Scope Expansion**: Digital evidence explicitly covers data stored in servers, active databases, cloud containers, smartphones, laptops, server logs, GPS logs, and encrypted messaging platforms like WhatsApp or Signal.
-* **Certificate Requirement**: A certificate signed by a person in charge of the device or a certified forensic expert is still required to prove integrity (Section 63(4)), but the process has been streamlined to prevent arbitrary rejections.`;
+        confidence = Math.round((1 - distances[0]) * 100);
+        if (confidence < 75) confidence = 75;
+        if (confidence > 99) confidence = 99;
+
+      } else {
+        // Default general substantive response when no specific section is matched but it is BNS related
+        responseText = `### BNS Retrieval Diagnostic • General Substantive Response
+
+Your query matches concepts within the **Bharatiya Nyaya Sanhita (BNS), 2023**, but falls outside the specific narrow categories indexed in the current ChromaDB collection. 
+
+Please refine your query or ask about substantive BNS codes such as:
+1. **Offences affecting life** (Murder Section 103, Negligence Section 106, Attempt Section 109, Organised Crime Section 111).
+2. **Offences against women and children** (Rape Section 63, Sexual Intercourse on false promise Section 69, Outraging Modesty Section 74, Cruelty Section 85).
+3. **Offences against property** (Theft Section 303, Snatching Section 304, Criminal Breach of Trust Section 316, Cheating Section 318).
+4. **General Exceptions** (Mistake of Fact Section 14, Accident Section 18, Insanity Section 22, Private Defence Section 35/38).`;
+
+        citations = [
+          {
+            act: 'Bharatiya Nyaya Sanhita (BNS), 2023',
+            section: 'General Substantive Law',
+            title: 'Substantive Criminal Offences',
+            relevance: 'Direct substantive code governing crimes and punishments in India.',
+            type: 'BNS' as const
+          }
+        ];
+        confidence = 85;
+      }
+
+    } catch (err: any) {
+      // Access denied error due to strict BNS filter
+      responseText = `### 🚫 Vector Database Security Restriction
+
+**ChromaDB Policy Enforcement Engine (Collection: 'bns_sanhita')**
+
+${err.message || 'Access denied for non-BNS queries.'}
+
+**Why did this happen?**
+Our legal AI platform is configured to strictly index and retrieve substantive criminal law under the **Bharatiya Nyaya Sanhita (BNS), 2023**. Procedural systems (such as police remand under BNSS Section 187, electronic admissibility certificates under BSA Section 63, or general non-substantive topics) are filtered to guarantee absolute code accuracy.`;
 
       citations = [
         {
-          act: 'Bharatiya Sakshya Adhiniyam (BSA), 2023',
-          section: 'Section 61 & 62',
-          title: 'Admissibility of Electronic Records',
-          relevance: 'Elevates digital records to primary evidence, replacing archaic IEA provisions.',
-          type: 'BSA'
-        },
-        {
-          act: 'Bharatiya Sakshya Adhiniyam (BSA), 2023',
-          section: 'Section 63',
-          title: 'Certificate of Electronic Evidence Integrity',
-          relevance: 'Lays down strict criteria and templates for validating digital storage logs (replacing old 65B certificates).',
-          type: 'BSA'
+          act: 'ChromaDB Policy',
+          section: 'Substantive Restriction Rule',
+          title: 'Strict BNS Alignment Policy',
+          relevance: 'Blocks non-BNS procedural topics (BNSS, BSA, IPC procedure) to maintain substantive accuracy.',
+          type: 'BNS' as const
         }
       ];
-
-      cases = [
-        {
-          title: 'Arjun Panditrao Khotkar v. Kailash Kushanrao Gorantyal',
-          citation: '(2020) 7 SCC 1',
-          year: 2020,
-          court: 'Supreme Court of India',
-          summary: 'Ruled that a Section 65B certificate is a condition precedent to the admissibility of secondary electronic records. BSA Section 63 codifies this by providing standard form templates in its Schedule.'
-        }
-      ];
-      confidence = 96;
-    } else if (textLower.includes('cheating') || textLower.includes('fraud') || textLower.includes('420') || textLower.includes('318')) {
-      responseText = `In the **Bharatiya Nyaya Sanhita (BNS), 2023**, the offence of **cheating** is categorized under **Section 318**, which fully replaces the iconic **Section 420** of the Indian Penal Code (IPC).
-
-* **Substantive Offence (Section 318(1))**: Defines cheating as inducing any person to deliver property or commit acts they would not otherwise do.
-* **Aggravated Cheating (Section 318(4))**: If cheating is done with knowledge that wrongful loss may ensue to a person whose interest the offender was bound to protect, or involves fraudulent delivery of valuable security, the punishment is up to **7 years imprisonment** along with a fine.
-* **Digital Fraud Integration**: Section 318 specifically integrates modern modes of cyber-fraud, digital baiting, UPI credential spoofing, and fictitious digital escrow accounts within its scope of prosecution.`;
-
-      citations = [
-        {
-          act: 'Bharatiya Nyaya Sanhita (BNS), 2023',
-          section: 'Section 318(4)',
-          title: 'Cheating and Dishonestly Inducing Delivery of Property',
-          relevance: 'The direct successor to IPC Section 420. Carries up to 7 years in prison.',
-          type: 'BNS'
-        }
-      ];
-
-      cases = [
-        {
-          title: 'State of Haryana v. Bhajan Lal',
-          citation: '1992 Supp (1) SCC 335',
-          year: 1992,
-          court: 'Supreme Court of India',
-          summary: 'Established principles for quashing FIRs including those of cheating where no prima facie case exists. Applicable to charges brought under the new BNS Section 318.'
-        }
-      ];
-      confidence = 97;
-    } else if (textLower.includes('promise of marriage') || textLower.includes('69') || textLower.includes('sexual')) {
-      responseText = `The **Bharatiya Nyaya Sanhita (BNS), 2023** introduces a brand new, highly debated statutory offence under **Section 69**, which has no direct standalone equivalent in the old IPC.
-
-* **The Provision**: Penalizes any person who, by **deceitful means** or by making a **promise to marry** without any intention of fulfilling it, has sexual intercourse with a woman.
-* **Deceitful Means Defined**: Explicitly includes false promises of employment, promotion, inducement, or marrying under a false identity.
-* **Punishment**: Imprisonment of either description for a term which may extend to **10 years** and shall also be liable to a fine.
-* **Legal Context**: Previously, such cases were prosecuted under Section 375 (Rape) claiming "consent was obtained under misconception of fact" (Section 90 IPC). Section 69 creates a distinct category, explicitly stating it does not amount to rape, but carries severe penal consequences.`;
-
-      citations = [
-        {
-          act: 'Bharatiya Nyaya Sanhita (BNS), 2023',
-          section: 'Section 69',
-          title: 'Sexual Intercourse on False Promise of Marriage',
-          relevance: 'Brand new distinct statutory offence carrying up to 10 years in prison.',
-          type: 'BNS'
-        }
-      ];
-      confidence = 99;
-    } else if (textLower.includes('custody') || textLower.includes('police remand') || textLower.includes('167') || textLower.includes('187')) {
-      responseText = `The timeline and rules for **Police Remand and Custody** have undergone a massive shift under **Section 187** of the **Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023** (which replaces CrPC Section 167).
-
-Key changes include:
-* **The Tranche Clause**: Under the old CrPC, police custody was capped at 15 days, and it *had* to be authorized within the first 15 days of arrest. Under BNSS Section 187, police custody can still be granted for up to 15 days, but this custody can be sought in **tranches/intervals** spread across the first **40 days** (for offences punishable up to 10 years) or **60 days** (for major offences carrying life or death penalties).
-* **Implication**: This significantly assists investigative agencies in complex corporate frauds, terrorist activities, or multi-state cartels where fresh evidence or co-accused arrests take weeks to materialize.
-* **Debate**: This has drawn focus from human rights legal experts who argue that intermittent police custody leaves the accused vulnerable to custodial coercion over a prolonged initial investigation period.`;
-
-      citations = [
-        {
-          act: 'Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023',
-          section: 'Section 187(2)',
-          title: 'Procedure when investigation cannot be completed in twenty-four hours',
-          relevance: 'Replaces CrPC 167. Allows flexible tranching of 15-day custody over a 40/60 day bracket.',
-          type: 'BNSS'
-        }
-      ];
-      confidence = 95;
-    } else {
-      // General response
-      responseText = `Based on the parameters of Indian Jurisprudence (including the newly integrated BNS, BNSS, and BSA criminal codes of 2023), I have performed a semantic search across our vector database of statutory acts, legislative commentaries, and High Court/Supreme Court precedents.
-
-To give you an accurate, citation-backed response, please let me know which specific branch or act you are addressing. You can ask me to:
-1. **Analyze Substantive Offences** (e.g., Mob Lynching under BNS Sec 103, Sexual Intercourse on promise of marriage under BNS Sec 69, Cheating under BNS Sec 318).
-2. **Review Criminal Procedure & Remand** (e.g., BNSS Sec 187 police custody, preliminary inquiry rules under BNSS Sec 173).
-3. **Consult Evidentiary Admissibility** (e.g., Admitting WhatsApp chat history as primary evidence under BSA Sec 61-63).
-
-How would you like to structure our legal consultation?`;
-      citations = [
-        {
-          act: 'Constitution of India',
-          section: 'Article 21',
-          title: 'Protection of Life and Personal Liberty',
-          relevance: 'Overriding constitutional mandate governing all procedure and penalties.',
-          type: 'IPC'
-        }
-      ];
-      confidence = 92;
+      confidence = 100;
     }
 
     const newMsg: ChatMessage = {
@@ -407,16 +366,30 @@ How would you like to structure our legal consultation?`;
   // Simulate POST /voice-chat
   async streamVoiceInteraction(userUtterance: string): Promise<{ transcript: string; replyText: string; audioDurationSec: number }> {
     await delay(1200);
-    const textLower = userUtterance.toLowerCase();
-    let replyText = "Understood. I am accessing the Bharatiya Nyaya Sanhita repository to match your vocal inquiry.";
-    let duration = 4.5;
+    let replyText = "";
+    let duration = 5.0;
 
-    if (textLower.includes('murder') || textLower.includes('103')) {
-      replyText = "Section 103 of the BNS governs murder. Sub-clause two specifically penalizes group killings, or mob lynching, with death or life imprisonment.";
-      duration = 6.2;
-    } else if (textLower.includes('evidence') || textLower.includes('whatsapp') || textLower.includes('63')) {
-      replyText = "Under Section 63 of the new Bharatiya Sakshya Adhiniyam, digital logs, servers, and WhatsApp chats require an electronic certificate to prove data integrity.";
-      duration = 7.8;
+    try {
+      const collection = await getChromaBNSCollection();
+      const results = await collection.query({
+        queryTexts: [userUtterance],
+        nResults: 1
+      });
+
+      const matchedDocs = results.documents[0] || [];
+      const matchedMetas = results.metadatas[0] || [];
+      const distances = results.distances[0] || [];
+
+      if (matchedDocs.length > 0 && distances[0] < 0.88) {
+        replyText = `According to Section ${matchedMetas[0].section} of the BNS, which deals with ${matchedMetas[0].title}.`;
+        duration = 6.5;
+      } else {
+        replyText = "Accessed the BNS database. That topic is recognized as part of substantive criminal law.";
+        duration = 5.2;
+      }
+    } catch (err: any) {
+      replyText = "Speech blocked. Our ChromaDB vector collection is strictly restricted to BNS substantive criminal law queries only. Procedural topics are disabled.";
+      duration = 8.5;
     }
 
     return {

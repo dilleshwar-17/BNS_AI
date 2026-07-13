@@ -69,7 +69,7 @@ export default function App() {
               BNS AI
             </h1>
             <p className="font-mono text-[9px] text-sky-400 font-extrabold tracking-widest uppercase">
-              Indian Judicial OS • Initializing Neural Core
+              Indian Judicial Cognitive Suite • Initializing Neural Engine
             </p>
           </div>
           <div className="w-48 h-1 bg-slate-950 rounded-full overflow-hidden mt-2 border border-white/5">
