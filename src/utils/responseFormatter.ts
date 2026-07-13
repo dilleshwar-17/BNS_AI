@@ -5,7 +5,7 @@
 
 /**
  * Formats legal section responses into structured, readable format
- * Converts raw BNS section text into Definition, Punishment, and Examples
+ * Dual-mode: Concise bullet points by default, detailed format on request
  */
 
 export interface FormattedLegalResponse {
@@ -16,6 +16,70 @@ export interface FormattedLegalResponse {
   punishment: string;
   examples?: string[];
   formattedText: string;
+}
+
+/**
+ * Detect if user is asking for detailed explanation
+ */
+export function isDetailedRequest(query: string): boolean {
+  const detailKeywords = [
+    'detail',
+    'explain',
+    'elaborate',
+    'comprehensive',
+    'full',
+    'complete',
+    'thoroughly',
+    'in depth',
+    'definition',
+    'meaning',
+    'what is',
+    'how does',
+    'tell me about',
+    'describe',
+    'break down',
+    'understand'
+  ];
+
+  const queryLower = query.toLowerCase();
+  return detailKeywords.some(keyword => queryLower.includes(keyword));
+}
+
+/**
+ * Format response as concise bullet points (quick mode - default)
+ */
+export function formatConciseBulletPoints(
+  sectionNumber: string,
+  title: string,
+  fullText: string
+): string {
+  let formatted = `**Section ${sectionNumber}: ${title}**\n\n`;
+
+  // Extract key sentences (not too long, not too short)
+  const sentences = fullText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const keyPoints: string[] = [];
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    // Skip examples and very long sentences, focus on definition
+    if (!trimmed.match(/^[a-z]\)/i) && trimmed.length < 200 && trimmed.length > 15) {
+      // Clean up the sentence
+      const cleaned = trimmed.replace(/Section \d+(\(\d+\))?:\s*/i, '').trim();
+      if (cleaned.length > 15 && !cleaned.toLowerCase().includes('example')) {
+        keyPoints.push(cleaned);
+      }
+    }
+  }
+
+  // Add key points as bullets (max 5)
+  if (keyPoints.length > 0) {
+    formatted += keyPoints.slice(0, 5).map(point => `• ${point}`).join('\n');
+  } else {
+    // Fallback: use first part of text
+    formatted += `• ${fullText.split(/[.!?]/)[0].trim()}`;
+  }
+
+  return formatted;
 }
 
 /**
@@ -80,7 +144,7 @@ export function parseDefinitionAndPunishment(
 }
 
 /**
- * Format legal response in structured markdown format
+ * Format legal response in structured markdown format (detailed mode)
  */
 export function formatLegalResponse(
   sectionNumber: string,
@@ -166,7 +230,7 @@ export function extractKeyComponents(text: string): {
 }
 
 /**
- * Format for cheating-specific response
+ * Format for cheating-specific response (detailed mode)
  */
 export function formatCheatingResponse(sectionText: string): string {
   const { mainDefinition, keyElements, punishment } = extractKeyComponents(
@@ -206,7 +270,7 @@ export function formatCheatingResponse(sectionText: string): string {
 }
 
 /**
- * Format for murder/section 103 response
+ * Format for murder/section 103 response (detailed mode)
  */
 export function formatMurderResponse(sectionText: string): string {
   let formatted = `**Section 103: Murder**\n`;
@@ -226,7 +290,7 @@ export function formatMurderResponse(sectionText: string): string {
 }
 
 /**
- * Generic formatter for any BNS section
+ * Generic formatter for any BNS section - DETAILED MODE
  */
 export function formatBNSSection(
   sectionNumber: string,
@@ -246,4 +310,23 @@ export function formatBNSSection(
   // Generic formatting
   const formatted = formatLegalResponse(sectionNumber, chapter, title, fullText);
   return formatted.formattedText;
+}
+
+/**
+ * Main formatter that chooses between concise and detailed mode
+ */
+export function formatResponse(
+  sectionNumber: string,
+  chapter: string,
+  title: string,
+  fullText: string,
+  isDetailed: boolean
+): string {
+  if (isDetailed) {
+    // Detailed mode - use structured format
+    return formatBNSSection(sectionNumber, chapter, title, fullText);
+  } else {
+    // Concise mode - use bullet points
+    return formatConciseBulletPoints(sectionNumber, title, fullText);
+  }
 }

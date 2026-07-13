@@ -5,7 +5,7 @@
 
 import { ChatMessage, DeepResearchSession, CompareResult, DraftDocument, LegalCitation, CaseLaw, ResearchPlanStep, EvidenceTimelineEvent } from '../types';
 import { getChromaBNSCollection } from './bnsVectorDB';
-import { formatBNSSection } from '../utils/responseFormatter';
+import { formatResponse, isDetailedRequest } from '../utils/responseFormatter';
 
 // Standard lag utility to simulate real network requests
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -253,23 +253,28 @@ export const APIService = {
         const topMeta = matchedMetas[0];
         const topDoc = matchedDocs[0];
         
-        // Use new formatter for structured response
-        responseText = formatBNSSection(
+        // Detect if user wants detailed explanation
+        const isDetailed = isDetailedRequest(question);
+        
+        // Use dual-mode formatter: concise by default, detailed on request
+        responseText = formatResponse(
           topMeta.section,
           topMeta.chapter || 'SUBSTANTIVE CODES',
           topMeta.title,
-          topDoc
+          topDoc,
+          isDetailed
         ) + '\n\n';
 
-        // If second match is also good, append as related provision
+        // If second match is also good, append as related provision (always detailed for related)
         if (matchedDocs.length > 1 && distances[1] < 0.88) {
           const secondMeta = matchedMetas[1];
           const secondDoc = matchedDocs[1];
-          responseText += `\n---\n\n### Related Substantive Provision\n\n${formatBNSSection(
+          responseText += `\n---\n\n### Related Provision\n\n${formatResponse(
             secondMeta.section,
             secondMeta.chapter,
             secondMeta.title,
-            secondDoc
+            secondDoc,
+            false // Related provisions shown as concise too
           )}`;
         }
 
