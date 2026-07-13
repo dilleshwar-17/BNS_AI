@@ -60,17 +60,12 @@ export default function App() {
     setLogoHoldTime(0);
   };
 
-  const handleLogin = (email: string) => {
-    setUserEmail(email);
-    setIsAuthenticated(true); // Auto-authenticate without password
-    setShowLanding(false); // Hide landing page
-    setActiveTab('workspace');
-  };
-
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setUserEmail('');
+    setUserEmail('user@bnsai.com');
     setShowLanding(true);
+    setIsAdmin(false);
+    setActiveTab('workspace');
   };
 
   const handleAddHistoryItem = (msg: ChatMessage) => {
@@ -137,15 +132,15 @@ export default function App() {
           </span>
         </button>
 
-        {isAuthenticated && (
+        {!showLanding && (
           <div className="flex items-center gap-4">
-            <span className="font-mono text-[10px] text-sky-400 bg-sky-950/40 border border-sky-900/30 px-3 py-1 rounded-full font-bold hidden md:inline-block shadow-[0_0_15px_rgba(56,189,248,0.15)]">
+            <span className="font-mono text-[10px] text-sky-400 bg-sky-950/40 border border-sky-900/30 px-3 py-1 rounded-full font-bold hidden md:inline-block shadow-[0_0_15px_rgba(56,189,248,0.1)]">
               v4.0.2 • STABLE
             </span>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
               <span className="font-sans text-xs text-slate-300 font-semibold max-w-[150px] truncate">
-                {isAdmin ? 'Admin' : 'User'}
+                {isAdmin ? 'Admin Portal' : 'Workspace'}
               </span>
             </div>
           </div>
@@ -154,12 +149,11 @@ export default function App() {
 
       {/* Main Layout Area */}
       <main className={`flex-1 w-full flex flex-col ${isAuthenticated ? 'md:flex-row gap-6 p-4 md:p-6' : 'p-2 sm:p-4 md:p-6'} relative z-10`}>
-        {!isAuthenticated ? (
-          showLanding ? (
-            <LandingView onEnterPortal={() => setShowLanding(false)} />
-          ) : (
-            <AuthView onLogin={handleLogin} onBackToLanding={() => setShowLanding(true)} />
-          )
+        {showLanding ? (
+          <LandingView onEnterPortal={() => {
+            setShowLanding(false);
+            setIsAuthenticated(true);
+          }} />
         ) : (
           <>
             {/* Sidebar component */}
@@ -206,7 +200,7 @@ export default function App() {
                 <SettingsHelpView />
               )}
 
-              {activeTab === 'admin' && isAdmin && (
+              {activeTab === 'admin' && (
                 <AdminPortalView />
               )}
 
