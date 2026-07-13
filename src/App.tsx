@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ActiveTab, ChatMessage } from './types';
 import Sidebar from './components/Sidebar';
 import WorkspaceView from './components/WorkspaceView';
@@ -20,12 +20,14 @@ import { ShieldCheck, Mail, Info, Sparkles, Scale, BookOpen } from 'lucide-react
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // No auth required - auto-authenticated
+  const [showLanding, setShowLanding] = useState(false); // Skip landing page
+  const [userEmail, setUserEmail] = useState('user@bnsai.com'); // Default user
   const [activeTab, setActiveTab] = useState<ActiveTab>('workspace');
-  const [isAdmin, setIsAdmin] = useState(true); // Default admin role for demonstration purposes
+  const [isAdmin, setIsAdmin] = useState(false); // Regular user by default
   const [customHistory, setCustomHistory] = useState<ChatMessage[]>([]);
+  const [logoHoldTime, setLogoHoldTime] = useState(0);
+  const logoHoldIntervalRef = useRef<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -33,6 +35,30 @@ export default function App() {
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Handle long-press on logo for admin access
+  const handleLogoMouseDown = () => {
+    setLogoHoldTime(0);
+    logoHoldIntervalRef.current = setInterval(() => {
+      setLogoHoldTime(prev => {
+        const newTime = prev + 100;
+        if (newTime >= 5000) {
+          // 5 seconds reached - navigate to admin
+          setIsAdmin(true);
+          setActiveTab('admin');
+          clearInterval(logoHoldIntervalRef.current);
+        }
+        return newTime;
+      });
+    }, 100);
+  };
+
+  const handleLogoMouseUp = () => {
+    if (logoHoldIntervalRef.current) {
+      clearInterval(logoHoldIntervalRef.current);
+    }
+    setLogoHoldTime(0);
+  };
 
   const handleLogin = (email: string) => {
     setUserEmail(email);
@@ -69,7 +95,7 @@ export default function App() {
               BNS AI
             </h1>
             <p className="font-mono text-[9px] text-sky-400 font-extrabold tracking-widest uppercase">
-              Indian Judicial Cognitive Suite • Initializing Neural Engine
+              Indian Legal Intelligence • Initializing Neural Engine
             </p>
           </div>
           <div className="w-48 h-1 bg-slate-950 rounded-full overflow-hidden mt-2 border border-white/5">
@@ -88,16 +114,17 @@ export default function App() {
       {/* Immersive Top Navigation Bar */}
       <header className="w-full bg-slate-950/60 backdrop-blur-xl text-white py-4 px-6 md:px-8 border-b border-white/5 flex items-center justify-between z-30">
         <button
-          onClick={() => {
-            setIsAuthenticated(false);
-            setUserEmail('');
-            setShowLanding(true);
-          }}
-          className="flex items-center gap-2.5 hover:opacity-85 transition-all cursor-pointer text-left focus:outline-none"
-          title="Return to Product Landing Page"
+          onMouseDown={handleLogoMouseDown}
+          onMouseUp={handleLogoMouseUp}
+          onMouseLeave={handleLogoMouseUp}
+          className="flex items-center gap-2.5 hover:opacity-85 transition-all cursor-pointer text-left focus:outline-none relative"
+          title="Long-press for admin access"
         >
+          {logoHoldTime > 0 && (
+            <div className="absolute -inset-2 rounded-lg border-2 border-blue-400 animate-pulse" />
+          )}
           <img 
-            src="/src/assets/images/bns_ai_icon_1783613389575.jpg" 
+            src="/src/assets/images/bns_ai_logo.png" 
             alt="BNS AI Logo" 
             className="w-7 h-7 rounded-lg border border-blue-500/30 object-cover shadow-[0_0_10px_rgba(59,130,246,0.25)]"
             referrerPolicy="no-referrer"
@@ -105,19 +132,19 @@ export default function App() {
           <span className="font-sans font-black tracking-tight text-base">BNS AI</span>
           <span className="h-4 w-[1px] bg-slate-850" />
           <span className="font-sans text-[11px] font-bold text-slate-400 tracking-wide uppercase hidden sm:inline">
-            Indian Legal Intelligence OS
+            Indian Legal Intelligence
           </span>
         </button>
 
         {isAuthenticated && (
           <div className="flex items-center gap-4">
             <span className="font-mono text-[10px] text-sky-400 bg-sky-950/40 border border-sky-900/30 px-3 py-1 rounded-full font-bold hidden md:inline-block shadow-[0_0_15px_rgba(56,189,248,0.15)]">
-              Index: 2026-BNS-STABLE
+              v4.0.2 • STABLE
             </span>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
               <span className="font-sans text-xs text-slate-300 font-semibold max-w-[150px] truncate">
-                {userEmail}
+                {isAdmin ? 'Admin' : 'User'}
               </span>
             </div>
           </div>
@@ -125,14 +152,8 @@ export default function App() {
       </header>
 
       {/* Main Layout Area */}
-      <main className={`flex-1 w-full flex flex-col ${isAuthenticated ? 'md:flex-row gap-6 p-4 md:p-6' : 'p-2 sm:p-4 md:p-6'} relative z-10`}>
-        {!isAuthenticated ? (
-          showLanding ? (
-            <LandingView onEnterPortal={() => setShowLanding(false)} />
-          ) : (
-            <AuthView onLogin={handleLogin} onBackToLanding={() => setShowLanding(true)} />
-          )
-        ) : (
+      <main className={`flex-1 w-full flex flex-col md:flex-row gap-6 p-4 md:p-6 relative z-10`}>
+        {isAuthenticated && (
           <>
             {/* Sidebar component */}
             <Sidebar
@@ -191,7 +212,7 @@ export default function App() {
       <footer className="w-full bg-slate-950/60 backdrop-blur-xl border-t border-white/5 text-slate-500 py-6 px-8 text-[11px] tracking-wider uppercase font-semibold mt-auto relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <span>BNS AI Legal OS • © 2026 Sovereign Jurisprudence</span>
+            <span>BNS AI Legal Intelligence • © 2026 Sovereign Jurisprudence</span>
             <span className="h-3 w-[1px] bg-slate-800 hidden sm:inline" />
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold tracking-widest text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -201,7 +222,7 @@ export default function App() {
           
           <div className="flex items-center gap-6 text-slate-400">
             <button
-              onClick={() => alert('BNS AI: Enterprise-grade Artificial Intelligence Operating System engineered to parse Bharatiya Nyaya Sanhita, BNSS, and BSA codifications in Indian Jurisprudence.')}
+              onClick={() => alert('BNS AI: Enterprise-grade Legal Intelligence Platform engineered to parse Bharatiya Nyaya Sanhita, BNSS, and BSA codifications in Indian Jurisprudence.')}
               className="hover:text-white transition-colors cursor-pointer"
             >
               About
