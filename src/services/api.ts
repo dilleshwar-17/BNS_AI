@@ -5,6 +5,7 @@
 
 import { ChatMessage, DeepResearchSession, CompareResult, DraftDocument, LegalCitation, CaseLaw, ResearchPlanStep, EvidenceTimelineEvent } from '../types';
 import { getChromaBNSCollection } from './bnsVectorDB';
+import { formatBNSSection } from '../utils/responseFormatter';
 
 // Standard lag utility to simulate real network requests
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -252,21 +253,24 @@ export const APIService = {
         const topMeta = matchedMetas[0];
         const topDoc = matchedDocs[0];
         
-        responseText = `### 🔍 BNS Sanhita Retrieval Result (ChromaDB Collection: 'bns_sanhita')
-
-I have performed a semantic vector search on our ChromaDB collection using the query terms. The top retrieved substantive match indicates:
-
-**${topMeta.chapter || 'SUBSTANTIVE CODES'} • Section ${topMeta.section}: ${topMeta.title}**
-
-${topDoc.replace(/Section \d+(\(\d+\))?: [^.]+\([^)]+\)\./i, '').trim()}
-
-`;
+        // Use new formatter for structured response
+        responseText = formatBNSSection(
+          topMeta.section,
+          topMeta.chapter || 'SUBSTANTIVE CODES',
+          topMeta.title,
+          topDoc
+        ) + '\n\n';
 
         // If second match is also good, append as related provision
         if (matchedDocs.length > 1 && distances[1] < 0.88) {
           const secondMeta = matchedMetas[1];
           const secondDoc = matchedDocs[1];
-          responseText += `\n---\n\n### Related Substantive Provision:\n**Section ${secondMeta.section}: ${secondMeta.title} (${secondMeta.chapter})**\n${secondDoc.replace(/Section \d+(\(\d+\))?: [^.]+\([^)]+\)\./i, '').trim()}`;
+          responseText += `\n---\n\n### Related Substantive Provision\n\n${formatBNSSection(
+            secondMeta.section,
+            secondMeta.chapter,
+            secondMeta.title,
+            secondDoc
+          )}`;
         }
 
         // Build active citations
