@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { OrbState, ChatMessage } from '../types';
 import { APIService } from '../services/api';
+import { getButtonStyle, getInputStyle, getCardStyle, componentStyles } from '../styles/componentStyles';
 import Orb from './Orb';
 import StreamingText from './StreamingText';
 import {
@@ -487,7 +488,7 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
         <button
           onClick={handleStartVoice}
           disabled={isGenerating}
-          className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-sky-400 rounded-xl transition-all cursor-pointer group shrink-0 relative disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`${getButtonStyle('icon')} shrink-0 relative disabled:opacity-40 disabled:cursor-not-allowed hover:text-sky-400`}
           title="Voice Command Mode"
         >
           <Mic size={18} className="group-hover:scale-105 transition-transform" />
@@ -504,14 +505,14 @@ export default function WorkspaceView({ onAddHistoryItem }: WorkspaceViewProps) 
           onKeyDown={e => e.key === 'Enter' && !isGenerating && handleSend(inputValue)}
           placeholder={isGenerating ? "BNS AI is preparing response..." : "Type Indian Law query, section, or case keyword..."}
           disabled={isGenerating}
-          className="flex-1 font-sans text-sm text-slate-200 placeholder:text-slate-500 bg-transparent outline-none border-none py-1.5 px-1 disabled:opacity-50"
+          className="flex-1 font-sans text-sm text-slate-200 placeholder:text-slate-500 bg-transparent outline-none border-none py-2 px-2 disabled:opacity-50"
         />
 
         {/* Submit Send Button */}
         <button
           onClick={() => !isGenerating && handleSend(inputValue)}
           disabled={isGenerating || !inputValue.trim()}
-          className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all cursor-pointer shrink-0 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 disabled:bg-slate-850 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed"
+          className={`${getButtonStyle('primary')} shrink-0 p-3 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 disabled:shadow-none`}
         >
           <Send size={16} />
         </button>
